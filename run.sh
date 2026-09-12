@@ -27,10 +27,16 @@ echo -e "${NC}"
 # ─── 1. Virtual muhit ─────────────────────────────────────────────────────────
 step "[1/3] Virtual muhit tekshirilmoqda..."
 if [ ! -d "$SCRIPT_DIR/venv" ]; then
-    err "venv papkasi topilmadi! Avval yarating:"
-    echo "      python3 -m venv venv && source venv/bin/activate"
-    echo "      pip install playwright && playwright install chromium"
-    exit 1
+    warn "venv topilmadi. Avtomatik yaratilmoqda va kutubxonalar o'rnatilmoqda..."
+    python3 -m venv "$SCRIPT_DIR/venv"
+    source "$SCRIPT_DIR/venv/bin/activate"
+    pip install --upgrade pip
+    if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
+        pip install -r "$SCRIPT_DIR/requirements.txt"
+    else
+        pip install playwright
+    fi
+    python3 -m playwright install chromium
 fi
 source "$SCRIPT_DIR/venv/bin/activate"
 ok "Virtual muhit faol"
