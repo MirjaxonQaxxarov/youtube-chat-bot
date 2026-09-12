@@ -1,0 +1,5 @@
+bot_chrome_data/
+venv/
+__pycache__/
+*.log
+.DS_Store
