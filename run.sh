@@ -24,6 +24,69 @@ echo "  ║   YouTube Multi-Profile + ChatGPT Bot Launcher  ║"
 echo "  ╚══════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
+# ─── 0. Tizim bog'liqliklarini avtomatik o'rnatish ────────────────────────────
+install_sys_deps() {
+    local missing=()
+    command -v python3 &>/dev/null || missing+=("python3")
+    command -v curl &>/dev/null || missing+=("curl")
+
+    if command -v python3 &>/dev/null; then
+        python3 -m venv --help &>/dev/null || missing+=("python3-venv")
+    fi
+
+    local chrome_exists=0
+    for c in /opt/google/chrome/chrome google-chrome google-chrome-stable chromium-browser chromium; do
+        if command -v "$c" &>/dev/null || [ -x "$c" ]; then
+            chrome_exists=1
+            break
+        fi
+    done
+
+    if [ ${#missing[@]} -eq 0 ] && [ "$chrome_exists" -eq 1 ]; then
+        return 0
+    fi
+
+    step "[0/3] Tizim dasturlari (Python, Chrome, Curl) tekshirilmoqda va o'rnatilmoqda..."
+
+    SUDO=""
+    if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+        command -v sudo &>/dev/null && SUDO="sudo"
+    fi
+
+    if command -v apt-get &>/dev/null; then
+        info "Debian/Ubuntu paket menejeri orqali dasturlar o'rnatilmoqda..."
+        $SUDO apt-get update -qq || true
+
+        if [ ${#missing[@]} -gt 0 ]; then
+            info "Yetishmayotgan tizim paketlari: ${missing[*]}"
+            $SUDO apt-get install -y -qq python3 python3-venv python3-pip curl || true
+        fi
+
+        if [ "$chrome_exists" -eq 0 ]; then
+            info "Google Chrome brauzeri o'rnatilmoqda..."
+            curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o /tmp/chrome.deb
+            $SUDO apt-get install -y -qq /tmp/chrome.deb || $SUDO apt-get install -y -qq chromium-browser || true
+            rm -f /tmp/chrome.deb
+        fi
+
+    elif command -v dnf &>/dev/null; then
+        info "Fedora/RHEL paket menejeri orqali dasturlar o'rnatilmoqda..."
+        $SUDO dnf install -y python3 curl google-chrome-stable || true
+
+    elif command -v pacman &>/dev/null; then
+        info "Arch Linux paket menejeri orqali dasturlar o'rnatilmoqda..."
+        $SUDO pacman -Sy --noconfirm python curl chromium || true
+
+    elif command -v brew &>/dev/null; then
+        info "macOS Homebrew orqali dasturlar o'rnatilmoqda..."
+        brew install python curl google-chrome || true
+    fi
+
+    ok "Tizim dasturlari tayyor!"
+}
+
+install_sys_deps
+
 # ─── 1. Virtual muhit ─────────────────────────────────────────────────────────
 step "[1/3] Virtual muhit tekshirilmoqda..."
 if [ ! -d "$SCRIPT_DIR/venv" ]; then
