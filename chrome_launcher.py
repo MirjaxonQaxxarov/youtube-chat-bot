@@ -50,12 +50,7 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
         logger.info("Chrome CDP port 9333 allaqachon faol! Profillar tayyor.")
         return True
 
-    # Eski Chrome jarayonlarini va lock fayllarni tozalaymiz
-    try:
-        subprocess.run(["pkill", "-9", "-f", chrome_bin], capture_output=True)
-        time.sleep(1)
-    except Exception:
-        pass
+    # Bot ma'lumotlar papkasini tayyorlash (foydalanuvchining boshqa Chrome oynalariga umuman tegmaydi)
 
     bot_data_dir.mkdir(parents=True, exist_ok=True)
     

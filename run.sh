@@ -138,11 +138,6 @@ if check_port; then
 else
     warn "Port 9333 faol emas. Chrome avtomatik ishga tushirilmoqda..."
     
-    info "Mavjud Chrome jarayonlari to'xtatilmoqda..."
-    pkill -9 -f "/opt/google/chrome/chrome" 2>/dev/null || true
-    pkill -9 -f "google-chrome" 2>/dev/null || true
-    sleep 2
-
     info "Singleton lock fayllar tozalanmoqda..."
     rm -f "$BOT_DATA_DIR/Singleton"* 2>/dev/null || true
     rm -f "$CHROME_ORIG_DIR/Singleton"* 2>/dev/null || true
