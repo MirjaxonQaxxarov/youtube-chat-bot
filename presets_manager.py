@@ -11,7 +11,7 @@ DEFAULT_PROXYSCRAPE_URL = (
 DEFAULT_PRESET_DATA = {
     "preset_name": "Standart Sozlama",
     "target_channel_url": "https://www.youtube.com/@tazkion",
-    "target_youtube_url": "https://www.youtube.com/watch?v=NtkK22Rtyco",
+    "target_youtube_url": "",
     "auto_resolve_channel_live": True,
     "selected_profiles": ["Profile 1", "Profile 2", "Profile 5", "Profile 6"],
     "proxy_api_url": DEFAULT_PROXYSCRAPE_URL,

@@ -8,6 +8,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Argumentlarni tekshirish
+CHROME_ONLY=0
+for arg in "$@"; do
+    if [ "$arg" == "--chrome-only" ] || [ "$arg" == "--bg" ]; then
+        CHROME_ONLY=1
+    fi
+done
+
 # ─── Ranglar ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
@@ -97,7 +105,7 @@ if [ ! -d "$SCRIPT_DIR/venv" ]; then
     if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
         pip install -r "$SCRIPT_DIR/requirements.txt"
     else
-        pip install playwright
+        pip install playwright customtkinter pillow requests
     fi
     python3 -m playwright install chromium
 fi
@@ -122,7 +130,7 @@ done
 
 BOT_DATA_DIR="$SCRIPT_DIR/bot_chrome_data"
 CHROME_ORIG_DIR="$HOME/.config/google-chrome"
-YT_URL="https://www.youtube.com/watch?v=NtkK22Rtyco"
+YT_HOME_URL="https://www.youtube.com"
 CHATGPT_URL="https://chatgpt.com"
 
 if check_port; then
@@ -190,7 +198,7 @@ else
     fi
 fi
 
-# YouTube profillarini alohida oynada ochish
+# YouTube profillarini alohida oynada ochish (YouTube bosh sahifasi bilan)
 info "YouTube profillari ochilmoqda (Optimallashgan resurs)..."
 for prof in "Profile 1" "Profile 2" "Profile 5" "Profile 6"; do
     if [ -d "$CHROME_ORIG_DIR/$prof" ]; then
@@ -203,13 +211,17 @@ for prof in "Profile 1" "Profile 2" "Profile 5" "Profile 6"; do
             --mute-audio \
             --disable-gpu \
             --disable-dev-shm-usage \
-            "$YT_URL" >/dev/null 2>&1 &
-        sleep 1.5
+            "$YT_HOME_URL" >/dev/null 2>&1 &
+        sleep 1.0
     fi
 done
-sleep 3
 
-# ─── 3. Python bot ────────────────────────────────────────────────────────────
+if [ "$CHROME_ONLY" -eq 1 ]; then
+    ok "Chrome CDP va profillar muvaffaqiyatli ishga tushdi!"
+    exit 0
+fi
+
+# ─── 3. Python bot CLI mode ───────────────────────────────────────────────────
 step "[3/3] Python bot ishga tushmoqda..."
 echo ""
 

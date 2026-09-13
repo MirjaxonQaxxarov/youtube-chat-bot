@@ -1,7 +1,7 @@
 {
   "preset_name": "Standart Sozlama",
   "target_channel_url": "https://www.youtube.com/@tazkion",
-  "target_youtube_url": "https://www.youtube.com/watch?v=NtkK22Rtyco",
+  "target_youtube_url": "",
   "auto_resolve_channel_live": true,
   "selected_profiles": [
     "Profile 1",

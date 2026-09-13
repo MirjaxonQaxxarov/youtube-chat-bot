@@ -11,7 +11,7 @@ CDP_URL  = f"http://127.0.0.1:{CDP_PORT}"
 #  URL va Kanal manzillari
 # ──────────────────────────────────────────────
 CHATGPT_URL               = "https://chatgpt.com"
-TARGET_YOUTUBE_URL        = "https://www.youtube.com/watch?v=NtkK22Rtyco"
+TARGET_YOUTUBE_URL        = ""                                # Bo'sh (Kanal havolasidan liveni avtomatik aniqlaydi)
 TARGET_CHANNEL_URL        = "https://www.youtube.com/@tazkion" # Kanal havolasi
 AUTO_RESOLVE_CHANNEL_LIVE = True                              # Kanal linkidan avtomatik liveni topish
 
