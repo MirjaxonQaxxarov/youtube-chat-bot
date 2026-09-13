@@ -142,13 +142,15 @@ async def _open_chatgpt_if_missing(ctx: BrowserContext) -> Page:
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def main():
-    # Signal handlerlari
-    loop = asyncio.get_running_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
-            loop.add_signal_handler(sig, _handle_signal)
-        except NotImplementedError:
-            pass
+    # Signal handlerlari (faqat asosiy potokda chaqirilganda)
+    import threading
+    if threading.current_thread() is threading.main_thread():
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                loop.add_signal_handler(sig, _handle_signal)
+            except (NotImplementedError, ValueError):
+                pass
 
     print("\n" + "=" * 60)
     print("   YOUTUBE MULTI-CHAT + CHATGPT AVTOMATIZATSIYASI")
