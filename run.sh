@@ -130,7 +130,6 @@ done
 
 BOT_DATA_DIR="$SCRIPT_DIR/bot_chrome_data"
 CHROME_ORIG_DIR="$HOME/.config/google-chrome"
-YT_HOME_URL="https://www.youtube.com"
 CHATGPT_URL="https://chatgpt.com"
 
 if check_port; then
@@ -138,11 +137,9 @@ if check_port; then
 else
     warn "Port 9333 faol emas. Chrome avtomatik ishga tushirilmoqda..."
     
-    info "Singleton lock fayllar tozalanmoqda..."
-    rm -f "$BOT_DATA_DIR/Singleton"* 2>/dev/null || true
-    rm -f "$CHROME_ORIG_DIR/Singleton"* 2>/dev/null || true
-
     mkdir -p "$BOT_DATA_DIR"
+    rm -f "$BOT_DATA_DIR/Singleton"* 2>/dev/null || true
+
     [ -f "$CHROME_ORIG_DIR/Local State" ] && cp -f "$CHROME_ORIG_DIR/Local State" "$BOT_DATA_DIR/Local State" 2>/dev/null || true
 
     if [ -d "$CHROME_ORIG_DIR/Default" ]; then
@@ -150,15 +147,7 @@ else
         for f in "Cookies" "Login Data" "Login Data-journal" "Web Data" "Preferences" "Secure Preferences" "Extension Cookies"; do
             [ -f "$CHROME_ORIG_DIR/Default/$f" ] && cp -f "$CHROME_ORIG_DIR/Default/$f" "$BOT_DATA_DIR/Default/$f" 2>/dev/null || true
         done
-        [ -d "$CHROME_ORIG_DIR/Default/Extensions" ] && ln -snf "$CHROME_ORIG_DIR/Default/Extensions" "$BOT_DATA_DIR/Default/Extensions" 2>/dev/null || true
     fi
-
-    for prof in "Profile 1" "Profile 2" "Profile 5" "Profile 6"; do
-        if [ -d "$CHROME_ORIG_DIR/$prof" ]; then
-            ln -snf "$CHROME_ORIG_DIR/$prof" "$BOT_DATA_DIR/$prof" 2>/dev/null || true
-            rm -f "$CHROME_ORIG_DIR/$prof/Singleton"* 2>/dev/null || true
-        fi
-    done
 
     CHROME_LOG="/tmp/yt_bot_chrome.log"
     info "Chrome Default (ChatGPT) profilida ochilmoqda..."
@@ -193,26 +182,8 @@ else
     fi
 fi
 
-# YouTube profillarini alohida oynada ochish (YouTube bosh sahifasi bilan)
-info "YouTube profillari ochilmoqda (Optimallashgan resurs)..."
-for prof in "Profile 1" "Profile 2" "Profile 5" "Profile 6"; do
-    if [ -d "$CHROME_ORIG_DIR/$prof" ]; then
-        info "  ▶ $prof ochilmoqda..."
-        "$CHROME_BIN" \
-            --user-data-dir="$BOT_DATA_DIR" \
-            --profile-directory="$prof" \
-            --no-first-run \
-            --no-default-browser-check \
-            --mute-audio \
-            --disable-gpu \
-            --disable-dev-shm-usage \
-            "$YT_HOME_URL" >/dev/null 2>&1 &
-        sleep 1.0
-    fi
-done
-
 if [ "$CHROME_ONLY" -eq 1 ]; then
-    ok "Chrome CDP va profillar muvaffaqiyatli ishga tushdi!"
+    ok "Chrome CDP muvaffaqiyatli ishga tushdi!"
     exit 0
 fi
 

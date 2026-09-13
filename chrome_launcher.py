@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import time
 import urllib.request
@@ -34,66 +35,96 @@ def find_chrome_binary() -> str:
             pass
     return "/opt/google/chrome/chrome"
 
+def _copy_profile_files(src_dir: Path, dst_dir: Path):
+    """
+    Profil fayllarini xavfsiz nusxalash (Symlink ishlatilmaydi!).
+    SingletonLock fayllariga umuman tegmaydi — shu sababli foydalanuvchining
+    ochiq turgan Chrome oynalari yopilib ketmaydi.
+    """
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Muhim seans va login fayllari
+    essential_files = [
+        "Cookies", "Cookies-journal", 
+        "Login Data", "Login Data-journal",
+        "Web Data", "Web Data-journal",
+        "Preferences", "Secure Preferences", 
+        "Extension Cookies"
+    ]
+
+    for fname in essential_files:
+        src_file = src_dir / fname
+        dst_file = dst_dir / fname
+        if src_file.exists():
+            try:
+                shutil.copy2(src_file, dst_file)
+            except Exception:
+                pass
+
+    # Extensions va Storage papkalarini nusxalash
+    for sub in ["Extensions", "Local Storage", "IndexedDB"]:
+        src_sub = src_dir / sub
+        dst_sub = dst_dir / sub
+        if src_sub.exists() and not dst_sub.exists():
+            try:
+                if src_sub.is_dir():
+                    shutil.copytree(src_sub, dst_sub, symlinks=False, ignore=shutil.ignore_patterns("Singleton*"))
+            except Exception:
+                pass
+
 def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bool:
     """
-    GUI dan berilgan buyruq bo'yicha Chrome ni CDP va tanlangan profillar bilan ishga tushirish.
+    GUI da tanlangan profillarnigina xavfsiz ochish.
+    Foydalanuvchining ochiq brauzer oynalariga umuman ta'sir ko'rsatmaydi.
     """
     chrome_bin = find_chrome_binary()
     project_dir = Path(__file__).parent.resolve()
     bot_data_dir = project_dir / "bot_chrome_data"
     chrome_orig_dir = Path.home() / ".config" / "google-chrome"
 
-    logger.info(f"Chrome ishga tushirilmoqda... Bin: {chrome_bin}")
+    logger.info(f"Chrome isolatsiyalangan rejimda tayyorlanmoqda... Tanlangan: {selected_profiles}")
 
-    # Agar port 9333 faol bo'lsa, uni ishlatamiz
+    # Port 9333 faol bo'lsa
     if is_cdp_active(port):
-        logger.info("Chrome CDP port 9333 allaqachon faol! Profillar tayyor.")
+        logger.info("Chrome CDP port 9333 allaqachon faol!")
         return True
 
-    # Bot ma'lumotlar papkasini tayyorlash (foydalanuvchining boshqa Chrome oynalariga umuman tegmaydi)
-
     bot_data_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Singleton lock larni o'chirish
-    for lock in bot_data_dir.glob("Singleton*"):
-        try:
-            lock.unlink()
-        except Exception:
-            pass
 
-    # Local State nusxalash
-    orig_state = chrome_orig_dir / "Local State"
-    if orig_state.exists():
-        try:
-            with open(orig_state, "rb") as sf, open(bot_data_dir / "Local State", "wb") as df:
-                df.write(sf.read())
-        except Exception:
-            pass
-
-    # Default (ChatGPT) profilini tayyorlash
-    if (chrome_orig_dir / "Default").exists():
-        (bot_data_dir / "Default").mkdir(exist_ok=True)
-        for fname in ["Cookies", "Login Data", "Web Data", "Preferences", "Secure Preferences"]:
-            src = chrome_orig_dir / "Default" / fname
-            dst = bot_data_dir / "Default" / fname
-            if src.exists():
+    # 1. Eski symlink yoki tanlanmagan profillarni bot papkasidan tozalash
+    for item in bot_data_dir.iterdir():
+        if item.is_symlink():
+            try:
+                item.unlink()
+            except Exception:
+                pass
+        elif item.is_dir() and item.name.startswith("Profile "):
+            if item.name not in selected_profiles:
                 try:
-                    with open(src, "rb") as fsrc, open(dst, "wb") as fdst:
-                        fdst.write(fsrc.read())
+                    shutil.rmtree(item)
                 except Exception:
                     pass
 
-    # Tanlangan profillar uchun symlink yaratish
+    # 2. Local State faylini nusxalash
+    orig_state = chrome_orig_dir / "Local State"
+    if orig_state.exists():
+        try:
+            shutil.copy2(orig_state, bot_data_dir / "Local State")
+        except Exception:
+            pass
+
+    # 3. Default (ChatGPT) profilini ko'chirish
+    if (chrome_orig_dir / "Default").exists():
+        _copy_profile_files(chrome_orig_dir / "Default", bot_data_dir / "Default")
+
+    # 4. FAQAT TANLANGAN profillarni bot papkasiga xavfsiz nusxalash
     for prof in selected_profiles:
         src_prof = chrome_orig_dir / prof
         dst_prof = bot_data_dir / prof
-        if src_prof.exists() and not dst_prof.exists():
-            try:
-                dst_prof.symlink_to(src_prof)
-            except Exception:
-                pass
+        if src_prof.exists():
+            _copy_profile_files(src_prof, dst_prof)
 
-    # 1. Avval ChatGPT uchun Default profilni CDP port bilan ochish
+    # 5. ChatGPT profilini CDP port (9333) bilan ishga tushirish
     cmd_default = [
         chrome_bin,
         f"--user-data-dir={bot_data_dir}",
@@ -108,7 +139,7 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
         "https://chatgpt.com"
     ]
     
-    logger.info("Chrome Default (ChatGPT) profili ochilmoqda...")
+    logger.info("Chrome ChatGPT (Default) profili ochilmoqda...")
     subprocess.Popen(cmd_default, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # Port ochilishini kutish
@@ -124,7 +155,7 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
         logger.error(f"Chrome CDP port {port} ochilmadi!")
         return False
 
-    # 2. Tanlangan YouTube profillarini alohida darcha (window) da ochish
+    # 6. FAQAT TANLANGAN YouTube profillarini alohida darchada ochish
     for prof in selected_profiles:
         if prof == "Default":
             continue
