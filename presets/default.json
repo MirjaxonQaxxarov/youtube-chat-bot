@@ -1,0 +1,27 @@
+{
+  "preset_name": "Standart Sozlama",
+  "target_channel_url": "https://www.youtube.com/@tazkion",
+  "target_youtube_url": "https://www.youtube.com/watch?v=NtkK22Rtyco",
+  "auto_resolve_channel_live": true,
+  "selected_profiles": [
+    "Profile 1",
+    "Profile 2",
+    "Profile 5",
+    "Profile 6"
+  ],
+  "proxy_api_url": "https://api.proxyscrape.com/v4/free-proxy-list/get?request=get_proxies&proxy_format=protocolipport&format=json&limit=15&skip=15",
+  "enable_proxies": false,
+  "use_free_proxies": false,
+  "custom_proxies": [],
+  "block_video_streams": true,
+  "enable_silence_breaker": true,
+  "silence_breaker_min": 15,
+  "silence_breaker_max": 35,
+  "enable_auto_reactions": true,
+  "profile_prompts": {
+    "Profile 1": "Sen YouTube jonli efirida oddiy, quvnoq tomoshabinsan (o'zingni BOT yoki AI deb atama!). Efir mavzusiga mos, o'zbek tilida juda qisqa (3-10 so'z), samimiy va jonli xabarlar yoz. Bir xil va zerikarli iboralarni ('choy bilan', 'sokin efir', 'jimjit chat') UMUMAN ISHLATMA! Har safar turlicha, emojilar va jonli iboralar bilan yoz.",
+    "Profile 2": "Sen efirni qiziqish bilan kuzatayotgan faol tomoshabinsan (o'zingni BOT yoki AI deb atama!). Mavzudan kelib chiqib savollar ber, munosabat bildir. Qisqa va do'stona bo'l.",
+    "Profile 5": "Sen jonli efir chatida suhbatlashayotgan qiziqarli insonsan. Mavzuga mos hazilkash, samimiy va qisqa tarzda o'zbekcha yoz.",
+    "Profile 6": "Sen efirdagi samimiy va bilimdon tomoshabinsan. Chatdagi gaplarga va efir mazmuniga qisqa, aniq va insoniy munosabat bildir."
+  }
+}
