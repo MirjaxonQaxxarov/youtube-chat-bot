@@ -15,7 +15,7 @@ from profile_scanner import scan_chrome_profiles
 from presets_manager import presets_manager, DEFAULT_PROXYSCRAPE_URL
 from chrome_launcher import launch_chrome_profiles, is_cdp_active
 from proxy_manager import proxy_manager
-from stream_resolver import check_channel_live_status
+from stream_resolver import resolve_live_stream_url, check_channel_live_status
 import config
 
 # Set CustomTkinter theme
@@ -53,9 +53,9 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("YouTube Multi-Profile AI Chat Bot v3.0 — Professional Control Panel")
-        self.geometry("1150x860")
-        self.minsize(1000, 750)
+        self.title("YouTube Multi-Profile AI Chat Bot v3.1 — Control Suite")
+        self.geometry("1180x890")
+        self.minsize(1020, 780)
 
         self.bot_thread = None
         self.loop = None
@@ -80,7 +80,7 @@ class App(ctk.CTk):
 
         title_label = ctk.CTkLabel(
             header_frame,
-            text="🚀 YOUTUBE MULTI-PROFILE BOT CONTROL PANEL v3.0",
+            text="🚀 YOUTUBE MULTI-PROFILE BOT CONTROL PANEL v3.1",
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color="#89B4FA"
         )
@@ -105,7 +105,7 @@ class App(ctk.CTk):
         self.tab_dashboard = self.tabview.add("🎮 Boshqaruv & Dashboard")
         self.tab_profiles = self.tabview.add("👥 Chrome Profillari")
         self.tab_proxies = self.tabview.add("🌐 Proxy Scrape & Tarmoq")
-        self.tab_jitter = self.tabview.add("⚙️ Jitter & Optimallash")
+        self.tab_jitter = self.tabview.add("⚙️ Jitter & Vaqt Sozlamalari")
         self.tab_presets = self.tabview.add("📁 Presets (Retseptlar)")
 
         self._build_tab_dashboard()
@@ -138,7 +138,7 @@ class App(ctk.CTk):
         logging.getLogger().addHandler(gui_handler)
         logging.getLogger().setLevel(logging.INFO)
 
-        logging.info("Professional Desktop GUI Interfeysi tayyorlandi ✅")
+        logging.info("Desktop GUI Control Suite v3.1 tayyor ✅")
 
     # ── TAB 1: DASHBOARD & MAIN CONTROLS ──────────────────────────────────────
     def _build_tab_dashboard(self):
@@ -189,14 +189,30 @@ class App(ctk.CTk):
         t_title = ctk.CTkLabel(target_box, text="📺 YouTube Kanal & Jonli Efir Manzili", font=ctk.CTkFont(size=15, weight="bold"))
         t_title.pack(anchor="w", padx=15, pady=(10, 5))
 
-        self.ent_channel_url = ctk.CTkEntry(target_box, placeholder_text="Kanal Linki (masalan: https://www.youtube.com/@tazkion)")
-        self.ent_channel_url.pack(fill="x", padx=15, pady=4)
+        ch_frame = ctk.CTkFrame(target_box, fg_color="transparent")
+        ch_frame.pack(fill="x", padx=15, pady=4)
+
+        self.ent_channel_url = ctk.CTkEntry(ch_frame, placeholder_text="Kanal Linki (masalan: https://www.youtube.com/@tazkion)")
+        self.ent_channel_url.pack(side="left", fill="x", expand=True, padx=(0, 6))
+
+        self.btn_resolve_live = ctk.CTkButton(
+            ch_frame,
+            text="🔴 Liveni Topish",
+            width=110,
+            fg_color="#FAB387",
+            text_color="#11111B",
+            command=self._cmd_resolve_live_now
+        )
+        self.btn_resolve_live.pack(side="right")
 
         self.var_auto_resolve = ctk.CTkCheckBox(target_box, text="Kanal linkidan avtomatik liveni topish")
         self.var_auto_resolve.pack(anchor="w", padx=15, pady=4)
 
         self.ent_stream_url = ctk.CTkEntry(target_box, placeholder_text="To'g'ridan-to'g'ri Live URL (https://www.youtube.com/watch?v=...)")
         self.ent_stream_url.pack(fill="x", padx=15, pady=4)
+
+        self.lbl_live_status = ctk.CTkLabel(target_box, text="Efir holati: Aniqlanmagan ⚪", font=ctk.CTkFont(size=12), text_color="#A6ADC8")
+        self.lbl_live_status.pack(anchor="w", padx=15, pady=(4, 10))
 
         # Right Column: Active Bot Cards Grid
         right_col = ctk.CTkFrame(tab, fg_color="#252538", corner_radius=10)
@@ -205,10 +221,43 @@ class App(ctk.CTk):
         b_title = ctk.CTkLabel(right_col, text="🤖 Faol Bot Profillari Holati", font=ctk.CTkFont(size=15, weight="bold"))
         b_title.pack(anchor="w", padx=15, pady=(10, 5))
 
-        self.cards_scroll = ctk.CTkScrollableFrame(right_col, fg_color="transparent", height=280)
+        self.cards_scroll = ctk.CTkScrollableFrame(right_col, fg_color="transparent", height=300)
         self.cards_scroll.pack(fill="both", expand=True, padx=10, pady=5)
 
         self._refresh_bot_cards()
+
+    def _cmd_resolve_live_now(self):
+        url = self.ent_channel_url.get().strip()
+        if not url:
+            logging.error("Kanal URL manzili kiritilmagan!")
+            return
+        logging.info(f"Kanal jonli efiri izlanmoqda: {url}")
+        self.lbl_live_status.configure(text="Efir holati: Izlanmoqda... ⏳", text_color="#FAB387")
+
+        def _run():
+            from playwright.sync_api import sync_playwright
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page()
+                    page.goto(url.rstrip("/") + "/live", wait_until="domcontentloaded", timeout=20000)
+                    time.sleep(2)
+                    found_url = page.url
+                    browser.close()
+                    if "watch?v=" in found_url:
+                        self.after(0, lambda: self._on_live_found(found_url))
+                    else:
+                        self.after(0, lambda: self.lbl_live_status.configure(text="Efir holati: Hozirda efir yo'q 🔴", text_color="#F38BA8"))
+            except Exception as e:
+                self.after(0, lambda: self.lbl_live_status.configure(text=f"Xato: {e}", text_color="#F38BA8"))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_live_found(self, live_url: str):
+        self.ent_stream_url.delete(0, "end")
+        self.ent_stream_url.insert(0, live_url)
+        self.lbl_live_status.configure(text=f"Efir holati: Topildi! 🟢 ({live_url[:40]}...)", text_color="#A6E3A1")
+        logging.info(f"✓ Faol jonli efir topildi: {live_url}")
 
     def _refresh_bot_cards(self):
         for widget in self.cards_scroll.winfo_children():
@@ -218,7 +267,7 @@ class App(ctk.CTk):
         for pinfo in self.available_profiles:
             pid = pinfo["id"]
             pname = pinfo["name"]
-            
+
             card = ctk.CTkFrame(self.cards_scroll, fg_color="#1E1E2E", corner_radius=8)
             card.pack(fill="x", padx=5, pady=4)
 
@@ -227,7 +276,7 @@ class App(ctk.CTk):
 
             lbl_status = ctk.CTkLabel(card, text="Kutmoqda ⏸", text_color="#FAB387", font=ctk.CTkFont(size=12))
             lbl_status.pack(side="right", padx=12, pady=8)
-            
+
             self.bot_cards[pid] = lbl_status
 
     # ── TAB 2: PROFILES & PROMPTS ─────────────────────────────────────────────
@@ -332,23 +381,24 @@ class App(ctk.CTk):
 
     def _cmd_test_proxies(self):
         logging.info("ProxyScrape v4 manzilidan proxylar o'qilmoqda...")
-        url = self.ent_proxy_url.get().strip()
         def _run():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            config.ENABLE_PROXIES = True
+            config.USE_FREE_PROXIES = True
             loop.run_until_complete(proxy_manager.initialize())
-            proxies = proxy_manager.proxies
-            logging.info(f"✓ Sinov yakunlandi. Tayyor proxylar: {len(proxies)} ta")
+            proxies = proxy_manager.working_proxies
+            logging.info(f"✓ Sinov yakunlandi. Tayyor proksilar: {len(proxies)} ta")
         threading.Thread(target=_run, daemon=True).start()
 
-    # ── TAB 4: JITTER & OPTIMIZATION ──────────────────────────────────────────
+    # ── TAB 4: JITTER & TIME SETTINGS WITH NUMERICAL LABELS ──────────────────
     def _build_tab_jitter(self):
         tab = self.tab_jitter
 
-        box = ctk.CTkFrame(tab, fg_color="#252538", corner_radius=10)
+        box = ctk.CTkScrollableFrame(tab, fg_color="#252538", corner_radius=10)
         box.pack(fill="both", expand=True, padx=15, pady=15)
 
-        title = ctk.CTkLabel(box, text="⚡ Human Jitter & Resurs Optimallash", font=ctk.CTkFont(size=16, weight="bold"))
+        title = ctk.CTkLabel(box, text="⚡ Human Jitter & Aniq Vaqt Sozlamalari", font=ctk.CTkFont(size=16, weight="bold"))
         title.pack(anchor="w", padx=20, pady=(15, 10))
 
         # Toggles
@@ -361,18 +411,53 @@ class App(ctk.CTk):
         self.var_reactions = ctk.CTkCheckBox(box, text="Auto Reaction/Emojis (Efirga emojilar bosib turish)")
         self.var_reactions.pack(anchor="w", padx=20, pady=6)
 
-        # Jitter Sliders
-        lbl_j1 = ctk.CTkLabel(box, text="⏱ Minimum Javob Kutish Kechikishi (Sekund):", font=ctk.CTkFont(size=13))
-        lbl_j1.pack(anchor="w", padx=20, pady=(12, 2))
-        self.slider_min_delay = ctk.CTkSlider(box, from_=3, to=30, number_of_steps=27)
+        # ── 1. MIN REPLY DELAY ──
+        f1 = ctk.CTkFrame(box, fg_color="transparent")
+        f1.pack(fill="x", padx=20, pady=(12, 2))
+        lbl_j1 = ctk.CTkLabel(f1, text="⏱ Min Javob Delay:", font=ctk.CTkFont(size=13, weight="bold"))
+        lbl_j1.pack(side="left")
+        self.lbl_min_delay_val = ctk.CTkLabel(f1, text="7 sek", font=ctk.CTkFont(size=13, weight="bold"), text_color="#A6E3A1")
+        self.lbl_min_delay_val.pack(side="right")
+
+        self.slider_min_delay = ctk.CTkSlider(box, from_=3, to=30, number_of_steps=27, command=lambda v: self.lbl_min_delay_val.configure(text=f"{int(v)} sek"))
         self.slider_min_delay.pack(fill="x", padx=20, pady=4)
         self.slider_min_delay.set(7)
 
-        lbl_j2 = ctk.CTkLabel(box, text="⏱ Maksimum Javob Kutish Kechikishi (Sekund):", font=ctk.CTkFont(size=13))
-        lbl_j2.pack(anchor="w", padx=20, pady=(10, 2))
-        self.slider_max_delay = ctk.CTkSlider(box, from_=10, to=60, number_of_steps=50)
+        # ── 2. MAX REPLY DELAY ──
+        f2 = ctk.CTkFrame(box, fg_color="transparent")
+        f2.pack(fill="x", padx=20, pady=(10, 2))
+        lbl_j2 = ctk.CTkLabel(f2, text="⏱ Max Javob Delay:", font=ctk.CTkFont(size=13, weight="bold"))
+        lbl_j2.pack(side="left")
+        self.lbl_max_delay_val = ctk.CTkLabel(f2, text="16 sek", font=ctk.CTkFont(size=13, weight="bold"), text_color="#A6E3A1")
+        self.lbl_max_delay_val.pack(side="right")
+
+        self.slider_max_delay = ctk.CTkSlider(box, from_=10, to=60, number_of_steps=50, command=lambda v: self.lbl_max_delay_val.configure(text=f"{int(v)} sek"))
         self.slider_max_delay.pack(fill="x", padx=20, pady=4)
         self.slider_max_delay.set(16)
+
+        # ── 3. SILENCE BREAKER MIN ──
+        f3 = ctk.CTkFrame(box, fg_color="transparent")
+        f3.pack(fill="x", padx=20, pady=(10, 2))
+        lbl_s1 = ctk.CTkLabel(f3, text="💬 Silence Breaker Min Kutish:", font=ctk.CTkFont(size=13, weight="bold"))
+        lbl_s1.pack(side="left")
+        self.lbl_silence_min_val = ctk.CTkLabel(f3, text="15 sek", font=ctk.CTkFont(size=13, weight="bold"), text_color="#89B4FA")
+        self.lbl_silence_min_val.pack(side="right")
+
+        self.slider_silence_min = ctk.CTkSlider(box, from_=10, to=60, number_of_steps=50, command=lambda v: self.lbl_silence_min_val.configure(text=f"{int(v)} sek"))
+        self.slider_silence_min.pack(fill="x", padx=20, pady=4)
+        self.slider_silence_min.set(15)
+
+        # ── 4. SILENCE BREAKER MAX ──
+        f4 = ctk.CTkFrame(box, fg_color="transparent")
+        f4.pack(fill="x", padx=20, pady=(10, 2))
+        lbl_s2 = ctk.CTkLabel(f4, text="💬 Silence Breaker Max Kutish:", font=ctk.CTkFont(size=13, weight="bold"))
+        lbl_s2.pack(side="left")
+        self.lbl_silence_max_val = ctk.CTkLabel(f4, text="35 sek", font=ctk.CTkFont(size=13, weight="bold"), text_color="#89B4FA")
+        self.lbl_silence_max_val.pack(side="right")
+
+        self.slider_silence_max = ctk.CTkSlider(box, from_=20, to=120, number_of_steps=100, command=lambda v: self.lbl_silence_max_val.configure(text=f"{int(v)} sek"))
+        self.slider_silence_max.pack(fill="x", padx=20, pady=4)
+        self.slider_silence_max.set(35)
 
     # ── TAB 5: PRESETS ────────────────────────────────────────────────────────
     def _build_tab_presets(self):
@@ -460,6 +545,24 @@ class App(ctk.CTk):
         else:
             self.var_reactions.deselect()
 
+        # Sliders
+        s_min = data.get("min_reply_delay", 7)
+        s_max = data.get("max_reply_delay", 16)
+        sb_min = data.get("silence_breaker_min", 15)
+        sb_max = data.get("silence_breaker_max", 35)
+
+        self.slider_min_delay.set(s_min)
+        self.lbl_min_delay_val.configure(text=f"{int(s_min)} sek")
+
+        self.slider_max_delay.set(s_max)
+        self.lbl_max_delay_val.configure(text=f"{int(s_max)} sek")
+
+        self.slider_silence_min.set(sb_min)
+        self.lbl_silence_min_val.configure(text=f"{int(sb_min)} sek")
+
+        self.slider_silence_max.set(sb_max)
+        self.lbl_silence_max_val.configure(text=f"{int(sb_max)} sek")
+
         # System Prompts
         self.current_prompts = data.get("profile_prompts", {})
         self._on_prompt_profile_changed(self.prompt_profile_menu.get())
@@ -487,7 +590,9 @@ class App(ctk.CTk):
             "enable_auto_reactions": bool(self.var_reactions.get()),
             "profile_prompts": self.current_prompts,
             "min_reply_delay": int(self.slider_min_delay.get()),
-            "max_reply_delay": int(self.slider_max_delay.get())
+            "max_reply_delay": int(self.slider_max_delay.get()),
+            "silence_breaker_min": int(self.slider_silence_min.get()),
+            "silence_breaker_max": int(self.slider_silence_max.get())
         }
 
     # ── BOT CONTROL LOGIC ─────────────────────────────────────────────────────
@@ -510,6 +615,8 @@ class App(ctk.CTk):
         config.PROFILE_SYSTEM_PROMPTS = ui_data["profile_prompts"]
         config.MIN_REPLY_DELAY = ui_data["min_reply_delay"]
         config.MAX_REPLY_DELAY = ui_data["max_reply_delay"]
+        config.SILENCE_BREAKER_MIN = ui_data["silence_breaker_min"]
+        config.SILENCE_BREAKER_MAX = ui_data["silence_breaker_max"]
 
         if not config.YOUTUBE_PROFILES:
             logging.error("Kamida 1 ta Chrome profili tanlanishi shart!")
