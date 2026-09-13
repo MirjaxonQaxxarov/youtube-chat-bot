@@ -202,6 +202,18 @@ async def main():
         yt_pages = _find_youtube_pages(_all_pages(browser))
         logger.info(f"Topilgan YouTube tablari: {len(yt_pages)}")
 
+        target_count = len(YOUTUBE_PROFILES)
+
+        # Ortiqcha keraksiz tablarni yopish
+        if len(yt_pages) > target_count:
+            logger.info(f"Tanlanmagan ortiqcha tablar yopilmoqda ({len(yt_pages) - target_count} ta)...")
+            for extra_page in yt_pages[target_count:]:
+                try:
+                    await extra_page.close()
+                except Exception:
+                    pass
+            yt_pages = yt_pages[:target_count]
+
         if not yt_pages:
             logger.warning(
                 f"YouTube tab topilmadi — avtomatik jonli efir ochilmoqda: {target_live_url}"
@@ -211,6 +223,8 @@ async def main():
                     p_new = await ctx.new_page()
                     await p_new.goto(target_live_url, wait_until="domcontentloaded")
                     yt_pages.append(p_new)
+                    if len(yt_pages) >= target_count:
+                        break
                 except Exception as e:
                     logger.error(f"Tab ochishda xato: {e}")
         else:
@@ -226,18 +240,11 @@ async def main():
         # ── 5. Har bir YouTube sahifasi uchun bot yaratish ───────────────────
         active_bots: list[YouTubeChatBot] = []
 
-        for i, yt_page in enumerate(yt_pages, start=1):
-            # Sahifa qaysi profilda ekanini aniqlash
-            profile_name = f"Profile_{i}"
-            yt_url_lower = yt_page.url.lower()
+        for i, yt_page in enumerate(yt_pages):
+            if i >= len(YOUTUBE_PROFILES):
+                break
 
-            # Profil nomini Chrome kontekst metadata dan aniqlashga urinish
-            # (to'g'ridan-to'g'ri Playwright'da profil nomini olish mumkin emas,
-            #  shuning uchun tartib bo'yicha YOUTUBE_PROFILES ga moslashtirish)
-            if i - 1 < len(YOUTUBE_PROFILES):
-                profile_name = YOUTUBE_PROFILES[i - 1]
-
-            # System prompt
+            profile_name = YOUTUBE_PROFILES[i]
             system_prompt = PROFILE_SYSTEM_PROMPTS.get(profile_name, DEFAULT_SYSTEM_PROMPT)
 
             logger.info(

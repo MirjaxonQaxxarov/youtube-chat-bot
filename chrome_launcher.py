@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 import subprocess
 import time
 import urllib.request
@@ -7,6 +8,7 @@ import logging
 from pathlib import Path
 
 logger = logging.getLogger("ChromeLauncher")
+
 
 def is_cdp_active(port: int = 9333) -> bool:
     """Chrome CDP porti faolligini tekshirish"""
@@ -16,6 +18,7 @@ def is_cdp_active(port: int = 9333) -> bool:
         return req.status == 200
     except Exception:
         return False
+
 
 def find_chrome_binary() -> str:
     """Tizimdagi Chrome brauzer ijro faylini topish"""
@@ -35,15 +38,77 @@ def find_chrome_binary() -> str:
             pass
     return "/opt/google/chrome/chrome"
 
+
+def sanitize_local_state(bot_data_dir: Path, selected_profiles: list[str]):
+    """
+    bot_chrome_data/Local State faylini tozalash:
+    Faqat Default va selected_profiles ni saqlab qoladi.
+    Shunda Chrome qayta ochilganda tanlanmagan eski profillarni o'z-o meʼrida tiklab yubormaydi.
+    """
+    local_state_path = bot_data_dir / "Local State"
+    if not local_state_path.exists():
+        return
+    try:
+        with open(local_state_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        profile_sec = data.get("profile", {})
+        info_cache = profile_sec.get("info_cache", {})
+
+        allowed = set(["Default"] + selected_profiles)
+
+        # Tanlanmagan profillarni cache dan tozalaymiz
+        new_info_cache = {k: v for k, v in info_cache.items() if k in allowed}
+        profile_sec["info_cache"] = new_info_cache
+        profile_sec["last_opened_profiles"] = list(allowed)
+        profile_sec["last_active_profiles"] = list(allowed)
+        data["profile"] = profile_sec
+
+        with open(local_state_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"Local State tozalandi. Faol profillar: {list(allowed)}")
+
+    except Exception as e:
+        logger.error(f"Local State ni tozalashda xato: {e}")
+
+
+def _clean_session_restore(profile_dir: Path):
+    """Eski sessiya va qayta tiklash fayllarini o'chirish"""
+    for sub in ["Sessions", "Current Tabs", "Current Session"]:
+        p = profile_dir / sub
+        if p.exists():
+            try:
+                if p.is_dir():
+                    shutil.rmtree(p)
+                else:
+                    p.unlink()
+            except Exception:
+                pass
+
+    # Preferences dagi crash_restore ni tozalash
+    pref_path = profile_dir / "Preferences"
+    if pref_path.exists():
+        try:
+            with open(pref_path, "r", encoding="utf-8") as f:
+                pref_data = json.load(f)
+            if "profile" in pref_data and "exit_type" in pref_data["profile"]:
+                pref_data["profile"]["exit_type"] = "Normal"
+                pref_data["profile"]["exited_cleanly"] = True
+                with open(pref_path, "w", encoding="utf-8") as f:
+                    json.dump(pref_data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+
 def _copy_profile_files(src_dir: Path, dst_dir: Path):
     """
-    Profil fayllarini xavfsiz nusxalash (Symlink ishlatilmaydi!).
+    Profil fayllarini xavfsiz nusxalash (Symlink o'rniga fayllar ko'chiriladi).
     SingletonLock fayllariga umuman tegmaydi — shu sababli foydalanuvchining
     ochiq turgan Chrome oynalari yopilib ketmaydi.
     """
     dst_dir.mkdir(parents=True, exist_ok=True)
     
-    # Muhim seans va login fayllari
     essential_files = [
         "Cookies", "Cookies-journal", 
         "Login Data", "Login Data-journal",
@@ -72,6 +137,9 @@ def _copy_profile_files(src_dir: Path, dst_dir: Path):
             except Exception:
                 pass
 
+    _clean_session_restore(dst_dir)
+
+
 def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bool:
     """
     GUI da tanlangan profillarnigina xavfsiz ochish.
@@ -84,28 +152,25 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
 
     logger.info(f"Chrome isolatsiyalangan rejimda tayyorlanmoqda... Tanlangan: {selected_profiles}")
 
-    # Port 9333 faol bo'lsa
-    if is_cdp_active(port):
-        logger.info("Chrome CDP port 9333 allaqachon faol!")
-        return True
-
     bot_data_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Eski symlink yoki tanlanmagan profillarni bot papkasidan tozalash
-    for item in bot_data_dir.iterdir():
-        if item.is_symlink():
-            try:
-                item.unlink()
-            except Exception:
-                pass
-        elif item.is_dir() and item.name.startswith("Profile "):
-            if item.name not in selected_profiles:
+    # 1. Bot papkasidagi eski symlinklar va TANLANGAN bo'lmagan profillarni o'chirish
+    if bot_data_dir.exists():
+        for item in bot_data_dir.iterdir():
+            if item.is_symlink():
                 try:
-                    shutil.rmtree(item)
+                    item.unlink()
                 except Exception:
                     pass
+            elif item.is_dir() and item.name.startswith("Profile "):
+                if item.name not in selected_profiles:
+                    try:
+                        logger.info(f"Tanlanmagan profil tozalanmoqda: {item.name}")
+                        shutil.rmtree(item)
+                    except Exception:
+                        pass
 
-    # 2. Local State faylini nusxalash
+    # 2. Local State faylini ko'chirish va tozalash
     orig_state = chrome_orig_dir / "Local State"
     if orig_state.exists():
         try:
@@ -113,7 +178,9 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
         except Exception:
             pass
 
-    # 3. Default (ChatGPT) profilini ko'chirish
+    sanitize_local_state(bot_data_dir, selected_profiles)
+
+    # 3. Default (ChatGPT) profilini nusxalash
     if (chrome_orig_dir / "Default").exists():
         _copy_profile_files(chrome_orig_dir / "Default", bot_data_dir / "Default")
 
@@ -124,6 +191,11 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
         if src_prof.exists():
             _copy_profile_files(src_prof, dst_prof)
 
+    # CDP 9333 faol bo'lsa
+    if is_cdp_active(port):
+        logger.info("Chrome CDP port 9333 allaqachon faol!")
+        return True
+
     # 5. ChatGPT profilini CDP port (9333) bilan ishga tushirish
     cmd_default = [
         chrome_bin,
@@ -133,6 +205,7 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
         "--profile-directory=Default",
         "--no-first-run",
         "--no-default-browser-check",
+        "--disable-session-crashed-bubble",
         "--mute-audio",
         "--disable-gpu",
         "--disable-dev-shm-usage",
@@ -166,6 +239,7 @@ def launch_chrome_profiles(selected_profiles: list[str], port: int = 9333) -> bo
             f"--profile-directory={prof}",
             "--no-first-run",
             "--no-default-browser-check",
+            "--disable-session-crashed-bubble",
             "--mute-audio",
             "--disable-gpu",
             "--disable-dev-shm-usage",
