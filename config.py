@@ -24,9 +24,9 @@ BLOCK_IMAGES        = False  # Rasm elementlarini bloklash (ixtiyoriy)
 # ──────────────────────────────────────────────
 #  Proksi (Proxy) Sozlamalari
 # ──────────────────────────────────────────────
-ENABLE_PROXIES      = True   # Har bir profil uchun alohida Proksi ishlatish
-USE_FREE_PROXIES    = True   # Bepul proksilarni avtomatik yuklash
-CUSTOM_PROXIES      = []     # Shaxsiy proksilar ro'yxati (masalan: ["http://ip:port", ...])
+ENABLE_PROXIES      = False  # Har bir profil uchun Proksi (Shaxsiy proksi bo'lsa True qiling)
+USE_FREE_PROXIES    = False  # Bepul proksilar sekin yoki beqaror bo'lishi mumkin
+CUSTOM_PROXIES      = []     # Shaxsiy tezkor proksilar ro'yxati (masalan: ["http://user:pass@ip:port", ...])
 
 # ──────────────────────────────────────────────
 #  Akkauntlar Rotatsiyasi
