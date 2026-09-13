@@ -122,7 +122,7 @@ done
 
 BOT_DATA_DIR="$SCRIPT_DIR/bot_chrome_data"
 CHROME_ORIG_DIR="$HOME/.config/google-chrome"
-YT_URL="https://www.youtube.com/watch?v=R4j4n5EAE0s"
+YT_URL="https://www.youtube.com/watch?v=NtkK22Rtyco"
 CHATGPT_URL="https://chatgpt.com"
 
 if check_port; then
@@ -166,6 +166,9 @@ else
         --profile-directory="Default" \
         --no-first-run \
         --no-default-browser-check \
+        --mute-audio \
+        --disable-gpu \
+        --disable-dev-shm-usage \
         "$CHATGPT_URL" >"$CHROME_LOG" 2>&1 &
 
     CHROME_PID=$!
@@ -188,7 +191,7 @@ else
 fi
 
 # YouTube profillarini alohida oynada ochish
-info "YouTube profillari ochilmoqda..."
+info "YouTube profillari ochilmoqda (Optimallashgan resurs)..."
 for prof in "Profile 1" "Profile 2" "Profile 5" "Profile 6"; do
     if [ -d "$CHROME_ORIG_DIR/$prof" ]; then
         info "  ▶ $prof ochilmoqda..."
@@ -197,6 +200,9 @@ for prof in "Profile 1" "Profile 2" "Profile 5" "Profile 6"; do
             --profile-directory="$prof" \
             --no-first-run \
             --no-default-browser-check \
+            --mute-audio \
+            --disable-gpu \
+            --disable-dev-shm-usage \
             "$YT_URL" >/dev/null 2>&1 &
         sleep 1.5
     fi

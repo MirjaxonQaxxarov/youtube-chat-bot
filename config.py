@@ -8,10 +8,31 @@ CDP_PORT = 9333
 CDP_URL  = f"http://127.0.0.1:{CDP_PORT}"
 
 # ──────────────────────────────────────────────
-#  URL manzillar
+#  URL va Kanal manzillari
 # ──────────────────────────────────────────────
-CHATGPT_URL        = "https://chatgpt.com"
-TARGET_YOUTUBE_URL = "https://www.youtube.com/watch?v=R4j4n5EAE0s"
+CHATGPT_URL               = "https://chatgpt.com"
+TARGET_YOUTUBE_URL        = "https://www.youtube.com/watch?v=NtkK22Rtyco"
+TARGET_CHANNEL_URL        = "https://www.youtube.com/@tazkion" # Kanal havolasi
+AUTO_RESOLVE_CHANNEL_LIVE = True                              # Kanal linkidan avtomatik liveni topish
+
+# ──────────────────────────────────────────────
+#  Resurs va Media optimallashtirish (RAM / CPU)
+# ──────────────────────────────────────────────
+BLOCK_VIDEO_STREAMS = True   # Video oqimlarini (googlevideo.com) bloklab, CPU/RAMni 80% tejash
+BLOCK_IMAGES        = False  # Rasm elementlarini bloklash (ixtiyoriy)
+
+# ──────────────────────────────────────────────
+#  Proksi (Proxy) Sozlamalari
+# ──────────────────────────────────────────────
+ENABLE_PROXIES      = True   # Har bir profil uchun alohida Proksi ishlatish
+USE_FREE_PROXIES    = True   # Bepul proksilarni avtomatik yuklash
+CUSTOM_PROXIES      = []     # Shaxsiy proksilar ro'yxati (masalan: ["http://ip:port", ...])
+
+# ──────────────────────────────────────────────
+#  Akkauntlar Rotatsiyasi
+# ──────────────────────────────────────────────
+ENABLE_ACCOUNT_ROTATION = True  # Profillarni navbatma-navbat almashib ishlatish
+ROTATION_INTERVAL_MINS = 25    # Har 25 daqiqada profillar navbati almashadi
 
 # ──────────────────────────────────────────────
 #  Profil sozlamalari
@@ -38,8 +59,8 @@ REPLY_PROBABILITY    = 0.90  # 90% xabarlarga javob berish
 #  Silence Breaker (Chatni faol tutish) Jitter sozlamalari
 # ──────────────────────────────────────────────
 ENABLE_SILENCE_BREAKER  = True
-SILENCE_BREAKER_MIN     = 35   # Minimum jimjitlik kutish (sekund)
-SILENCE_BREAKER_MAX     = 75   # Maksimum jimjitlik kutish (sekund)
+SILENCE_BREAKER_MIN     = 15   # Minimum jimjitlik kutish (sekund)
+SILENCE_BREAKER_MAX     = 35   # Maksimum jimjitlik kutish (sekund)
 
 # ──────────────────────────────────────────────
 #  Reaksiya/Emoji bosish Jitter sozlamalari
@@ -50,7 +71,6 @@ REACTION_INTERVAL_MAX   = 25   # Reaksiya bosish max oralig'i (sekund)
 
 # ──────────────────────────────────────────────
 #  Har bir profil uchun alohida system prompt
-#  (HECH QACHON o'zini bot/AI deb atamaydi, samimiy insoniy chat yozadi)
 # ──────────────────────────────────────────────
 PROFILE_SYSTEM_PROMPTS = {
     "Profile 1": (
@@ -81,5 +101,6 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 PROFILE_BOT_NAMES = {}
+
 
 

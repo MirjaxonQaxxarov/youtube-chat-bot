@@ -13,6 +13,7 @@ from config import (
     ENABLE_AUTO_REACTIONS,
     REACTION_INTERVAL_MIN,
     REACTION_INTERVAL_MAX,
+    BLOCK_VIDEO_STREAMS,
 )
 from coordinator import coordinator
 
@@ -59,6 +60,19 @@ class YouTubeChatBot:
 
         # Tab yopilganda handler
         self.page.on("close", self._on_page_closed)
+
+        # 0. RAM/CPU tejash uchun video pleerni to'xtatish
+        if BLOCK_VIDEO_STREAMS:
+            try:
+                await self.page.evaluate("""
+                () => {
+                    document.querySelectorAll('video').forEach(v => {
+                        try { v.pause(); v.muted = true; } catch(e) {}
+                    });
+                }
+                """)
+            except Exception:
+                pass
 
         # 1. Chat frame ni topish
         await self._find_chat_frame()

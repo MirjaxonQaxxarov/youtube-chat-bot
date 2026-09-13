@@ -10,6 +10,9 @@ from config import (
     CDP_URL,
     CHATGPT_URL,
     TARGET_YOUTUBE_URL,
+    TARGET_CHANNEL_URL,
+    AUTO_RESOLVE_CHANNEL_LIVE,
+    ENABLE_PROXIES,
     YOUTUBE_PROFILES,
     PROFILE_SYSTEM_PROMPTS,
     DEFAULT_SYSTEM_PROMPT,
@@ -20,6 +23,8 @@ from config import (
 from coordinator import coordinator
 from chatgpt_bot import ChatGPTBot
 from youtube_bot import YouTubeChatBot
+from proxy_manager import proxy_manager
+from stream_resolver import resolve_live_stream_url
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  Logging sozlash
@@ -99,7 +104,6 @@ async def _silence_breaker_loop(gpt_bot: ChatGPTBot, active_bots: list[YouTubeCh
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  Yordamchi funksiyalar
-
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _all_pages(browser: Browser) -> list[Page]:
@@ -150,6 +154,10 @@ async def main():
     print("   YOUTUBE MULTI-CHAT + CHATGPT AVTOMATIZATSIYASI")
     print("=" * 60 + "\n")
 
+    # Proksilarni tayyorlash
+    if ENABLE_PROXIES:
+        await proxy_manager.initialize()
+
     async with async_playwright() as p:
 
         # ── 1. Chrome ga CDP orqali ulanish ──────────────────────────────────
@@ -164,10 +172,16 @@ async def main():
         all_pages = _all_pages(browser)
         logger.info(f"Jami ochiq tablar: {len(all_pages)}")
 
+        # ── 2. Kanal Jonli Efirini avtomatik aniqlash ──────────────────────
+        target_live_url = TARGET_YOUTUBE_URL
+        if AUTO_RESOLVE_CHANNEL_LIVE and browser.contexts:
+            target_live_url = await resolve_live_stream_url(browser.contexts[0])
+            logger.info(f"✓ Target Jonli Efir: {target_live_url}")
+
         for i, pg in enumerate(all_pages):
             logger.info(f"  Tab {i+1}: {pg.url[:80]}")
 
-        # ── 2. ChatGPT sahifasini topish ─────────────────────────────────────
+        # ── 3. ChatGPT sahifasini topish ─────────────────────────────────────
         gpt_page = _find_chatgpt_page(all_pages)
         if not gpt_page:
             if browser.contexts:
@@ -178,25 +192,34 @@ async def main():
 
         logger.info(f"ChatGPT tab: {gpt_page.url}")
 
-        # ── 3. ChatGPT botini tayyor qilish ──────────────────────────────────
+        # ── 4. ChatGPT botini tayyor qilish ──────────────────────────────────
         gpt_bot = ChatGPTBot(gpt_page)
         await gpt_bot.start()
 
-        # ── 4. YouTube sahifalarini topish ────────────────────────────────────
+        # ── 5. YouTube sahifalarini topish va ulanish ────────────────────────
         yt_pages = _find_youtube_pages(_all_pages(browser))
         logger.info(f"Topilgan YouTube tablari: {len(yt_pages)}")
 
         if not yt_pages:
             logger.warning(
-                f"YouTube tab topilmadi — avtomatik tarzda ochilmoqda: {TARGET_YOUTUBE_URL}"
+                f"YouTube tab topilmadi — avtomatik jonli efir ochilmoqda: {target_live_url}"
             )
             for ctx in browser.contexts:
                 try:
                     p_new = await ctx.new_page()
-                    await p_new.goto(TARGET_YOUTUBE_URL, wait_until="domcontentloaded")
+                    await p_new.goto(target_live_url, wait_until="domcontentloaded")
                     yt_pages.append(p_new)
                 except Exception as e:
                     logger.error(f"Tab ochishda xato: {e}")
+        else:
+            # Mavjud tablarni aniqlangan jonli efir URL'iga yo'naltirish
+            for p_yt in yt_pages:
+                if "watch?v=" not in p_yt.url or (target_live_url and target_live_url not in p_yt.url):
+                    try:
+                        logger.info(f"Tab jonli efirga o'tkazilmoqda: {target_live_url}")
+                        await p_yt.goto(target_live_url, wait_until="domcontentloaded")
+                    except Exception:
+                        pass
 
         # ── 5. Har bir YouTube sahifasi uchun bot yaratish ───────────────────
         active_bots: list[YouTubeChatBot] = []
